@@ -66,7 +66,7 @@ def extract_skills(text, skills_list):
     return list(found_skills)
 
 import pandas as pd
-            if skills:
+        if skills:
                 st.subheader("📊 Skills Visualization")
                 df = pd.DataFrame(skills, columns=["Skill"])
                 st.bar_chart(df)
@@ -126,4 +126,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
