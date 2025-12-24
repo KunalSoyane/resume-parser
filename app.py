@@ -59,7 +59,25 @@ def extract_skills(text, skills_list):
         span = doc[start:end]
         found_skills.add(span.text)
     return list(found_skills)
-
+# ... after extracting data ...
+            
+            # Create a dictionary for the report
+            data = {
+                "Email": [contact['email']],
+                "Phone": [contact['phone']],
+                "Skills": [", ".join(skills)]
+            }
+            df_report = pd.DataFrame(data)
+            
+            # Convert to CSV
+            csv = df_report.to_csv(index=False).encode('utf-8')
+            
+            st.download_button(
+                label="📥 Download Report as CSV",
+                data=csv,
+                file_name='resume_parsed.csv',
+                mime='text/csv',
+            )
 # --- 3. THE STREAMLIT UI ---
 
 def main():
@@ -119,4 +137,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
