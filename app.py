@@ -65,6 +65,12 @@ def extract_skills(text, skills_list):
         found_skills.add(span.text)
     return list(found_skills)
 
+import pandas as pd
+            if skills:
+                st.subheader("📊 Skills Visualization")
+                df = pd.DataFrame(skills, columns=["Skill"])
+                st.bar_chart(df)
+
 # --- 3. THE STREAMLIT UI ---
 
 def main():
@@ -109,4 +115,5 @@ def main():
             st.error(f"An error occurred: {e}")
 
 if __name__ == "__main__":
+
     main()
