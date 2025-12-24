@@ -3,8 +3,8 @@ import pdfplumber
 import re
 import spacy
 from spacy.matcher import PhraseMatcher
-import pandas as pd  # Moved import to top
-
+import pandas as pd  
+from utils import extract_text_from_pdf, extract_contact_info, extract_skills
 # --- 1. SETUP & CONFIG ---
 st.set_page_config(page_title="AI Resume Parser", page_icon="📄")
 
@@ -119,3 +119,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
