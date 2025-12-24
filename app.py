@@ -1,18 +1,10 @@
 import streamlit as st
-import pdfplumber
-import re
-import spacy
-from spacy.matcher import PhraseMatcher
-import pandas as pd  
-from utils import extract_text_from_pdf, extract_contact_info, extract_skills
-# --- 1. SETUP & CONFIG ---
+import pandas as pd
+# Import the logic from our new utils.py file
+from utils import extract_text_from_pdf, extract_contact_info, extract_skills, extract_name
+
+# --- CONFIG ---
 st.set_page_config(page_title="AI Resume Parser", page_icon="📄")
-
-@st.cache_resource
-def load_model():
-    return spacy.load("en_core_web_sm")
-
-nlp = load_model()
 
 # Our Knowledge Base
 SKILLS_DB = [
@@ -22,80 +14,21 @@ SKILLS_DB = [
     "Communication", "Leadership", "Git", "Linux"
 ]
 
-# --- 2. CORE FUNCTIONS ---
-
-def extract_text_from_pdf(file):
-    full_text = ""
-    with pdfplumber.open(file) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                full_text += text + "\n"
-    return full_text
-
-def extract_contact_info(text):
-    contact_info = {"email": None, "phone": None}
-    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-    phone_pattern = r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}'
-    
-    email_match = re.search(email_pattern, text)
-    if email_match:
-        contact_info["email"] = email_match.group()
-        
-    phone_match = re.search(phone_pattern, text)
-    if phone_match:
-        contact_info["phone"] = phone_match.group()
-        
-    return contact_info
-
-def extract_skills(text, skills_list):
-    doc = nlp(text)
-    matcher = PhraseMatcher(nlp.vocab)
-    patterns = [nlp.make_doc(skill) for skill in skills_list]
-    matcher.add("SKILLS", patterns)
-    matches = matcher(doc)
-    found_skills = set()
-    for match_id, start, end in matches:
-        span = doc[start:end]
-        found_skills.add(span.text)
-    return list(found_skills)
-# ... after extracting data ...
-            
-            # Create a dictionary for the report
-            data = {
-                "Email": [contact['email']],
-                "Phone": [contact['phone']],
-                "Skills": [", ".join(skills)]
-            }
-            df_report = pd.DataFrame(data)
-            
-            # Convert to CSV
-            csv = df_report.to_csv(index=False).encode('utf-8')
-            
-            st.download_button(
-                label="📥 Download Report as CSV",
-                data=csv,
-                file_name='resume_parsed.csv',
-                mime='text/csv',
-            )
-# --- 3. THE STREAMLIT UI ---
-
+# --- MAIN APP ---
 def main():
     st.title("📄 AI Resume Parser")
-    st.write("Upload a resume (PDF) to extract contact info and skills.")
+    st.write("Upload a resume (PDF) to extract contact info, skills, and generate a report.")
 
-    # --- DOWNLOAD BUTTON SECTION ---
-    # Wrap this in try-except so the app doesn't crash if the file is missing
+    # --- DOWNLOAD SAMPLE ---
     try:
         with open("sample_resume.pdf", "rb") as pdf_file:
             PDFbyte = pdf_file.read()
-        
         st.download_button(label="Download Sample Resume",
                             data=PDFbyte,
                             file_name="sample_resume.pdf",
                             mime='application/octet-stream')
     except FileNotFoundError:
-        st.warning("Note: 'sample_resume.pdf' not found in repository. Upload your own file to test.")
+        st.warning("Note: 'sample_resume.pdf' not found. Upload your own.")
 
     # --- UPLOAD SECTION ---
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
@@ -103,17 +36,20 @@ def main():
     if uploaded_file is not None:
         try:
             with st.spinner('Reading Resume...'):
+                # 1. Call functions from utils.py
                 resume_text = extract_text_from_pdf(uploaded_file)
                 contact = extract_contact_info(resume_text)
                 skills = extract_skills(resume_text, SKILLS_DB)
+                name = extract_name(resume_text)
 
             st.success("Resume processed successfully!")
             
-            # Layout
+            # 2. Display Results
             col1, col2 = st.columns(2)
             
             with col1:
-                st.subheader("📞 Contact Info")
+                st.subheader("👤 Candidate Info")
+                st.text_input("Name", value=name)
                 st.text_input("Email", value=contact['email'] if contact['email'] else "Not Found")
                 st.text_input("Phone", value=contact['phone'] if contact['phone'] else "Not Found")
 
@@ -122,13 +58,34 @@ def main():
                 st.write(f"Found {len(skills)} skills:")
                 st.pills("Skills", skills, selection_mode="multi")
 
-            # --- VISUALIZATION SECTION (Fixed Placement) ---
+            # 3. Visualization
             if skills:
                 st.subheader("📊 Skills Visualization")
-                # Create a simple DataFrame for the chart
                 df = pd.DataFrame({"Skill": skills, "Count": [1]*len(skills)})
                 st.bar_chart(df.set_index("Skill"))
 
+            # 4. CSV Export (The new feature!)
+            st.divider()
+            st.subheader("💾 Export Report")
+            
+            # Prepare data for CSV
+            report_data = {
+                "Name": [name],
+                "Email": [contact['email']],
+                "Phone": [contact['phone']],
+                "Skills": [", ".join(skills)]
+            }
+            df_report = pd.DataFrame(report_data)
+            csv = df_report.to_csv(index=False).encode('utf-8')
+            
+            st.download_button(
+                label="📥 Download Resume Data (CSV)",
+                data=csv,
+                file_name='resume_parsed.csv',
+                mime='text/csv',
+            )
+
+            # Raw text expander
             with st.expander("See Raw Extracted Text"):
                 st.text(resume_text)
 
@@ -137,5 +94,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
