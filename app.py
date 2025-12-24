@@ -3,12 +3,11 @@ import pdfplumber
 import re
 import spacy
 from spacy.matcher import PhraseMatcher
+import pandas as pd  # Moved import to top
 
 # --- 1. SETUP & CONFIG ---
-# st.set_page_config makes the tab title look good
 st.set_page_config(page_title="AI Resume Parser", page_icon="📄")
 
-# Load NLP model efficiently (cache it so it doesn't reload on every click)
 @st.cache_resource
 def load_model():
     return spacy.load("en_core_web_sm")
@@ -23,14 +22,10 @@ SKILLS_DB = [
     "Communication", "Leadership", "Git", "Linux"
 ]
 
-# --- 2. CORE FUNCTIONS (Same as before) ---
+# --- 2. CORE FUNCTIONS ---
 
 def extract_text_from_pdf(file):
-    """
-    Modified to handle Streamlit's file uploader object directly
-    """
     full_text = ""
-    # pdfplumber can open file-like objects (streams) directly!
     with pdfplumber.open(file) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
@@ -65,44 +60,38 @@ def extract_skills(text, skills_list):
         found_skills.add(span.text)
     return list(found_skills)
 
-import pandas as pd
-        if skills:
-                st.subheader("📊 Skills Visualization")
-                df = pd.DataFrame(skills, columns=["Skill"])
-                st.bar_chart(df)
-
 # --- 3. THE STREAMLIT UI ---
 
 def main():
     st.title("📄 AI Resume Parser")
     st.write("Upload a resume (PDF) to extract contact info and skills.")
 
-    st.write("Don't have a resume? Download this sample to test it:")
-    with open("sample_resume.pdf", "rb") as pdf_file:
-        PDFbyte = pdf_file.read()
+    # --- DOWNLOAD BUTTON SECTION ---
+    # Wrap this in try-except so the app doesn't crash if the file is missing
+    try:
+        with open("sample_resume.pdf", "rb") as pdf_file:
+            PDFbyte = pdf_file.read()
+        
+        st.download_button(label="Download Sample Resume",
+                            data=PDFbyte,
+                            file_name="sample_resume.pdf",
+                            mime='application/octet-stream')
+    except FileNotFoundError:
+        st.warning("Note: 'sample_resume.pdf' not found in repository. Upload your own file to test.")
 
-    st.download_button(label="Download Sample Resume",
-                        data=PDFbyte,
-                        file_name="sample_resume.pdf",
-                        mime='application/octet-stream')
-
-    # File Uploader Widget
+    # --- UPLOAD SECTION ---
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
     if uploaded_file is not None:
         try:
             with st.spinner('Reading Resume...'):
-                # 1. Extract Text
                 resume_text = extract_text_from_pdf(uploaded_file)
-                
-                # 2. Extract Info
                 contact = extract_contact_info(resume_text)
                 skills = extract_skills(resume_text, SKILLS_DB)
 
-            # 3. Display Results
             st.success("Resume processed successfully!")
             
-            # Create two columns for layout
+            # Layout
             col1, col2 = st.columns(2)
             
             with col1:
@@ -113,10 +102,15 @@ def main():
             with col2:
                 st.subheader("🛠 Skills Found")
                 st.write(f"Found {len(skills)} skills:")
-                # Display skills as colorful "chips"
                 st.pills("Skills", skills, selection_mode="multi")
 
-            # Show Raw Text (Optional, inside an expander)
+            # --- VISUALIZATION SECTION (Fixed Placement) ---
+            if skills:
+                st.subheader("📊 Skills Visualization")
+                # Create a simple DataFrame for the chart
+                df = pd.DataFrame({"Skill": skills, "Count": [1]*len(skills)})
+                st.bar_chart(df.set_index("Skill"))
+
             with st.expander("See Raw Extracted Text"):
                 st.text(resume_text)
 
@@ -124,7 +118,4 @@ def main():
             st.error(f"An error occurred: {e}")
 
 if __name__ == "__main__":
-
     main()
-
-
