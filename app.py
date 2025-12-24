@@ -77,6 +77,15 @@ def main():
     st.title("📄 AI Resume Parser")
     st.write("Upload a resume (PDF) to extract contact info and skills.")
 
+    st.write("Don't have a resume? Download this sample to test it:")
+    with open("sample_resume.pdf", "rb") as pdf_file:
+        PDFbyte = pdf_file.read()
+
+    st.download_button(label="Download Sample Resume",
+                        data=PDFbyte,
+                        file_name="sample_resume.pdf",
+                        mime='application/octet-stream')
+
     # File Uploader Widget
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
@@ -117,3 +126,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
