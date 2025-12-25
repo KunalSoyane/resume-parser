@@ -50,11 +50,25 @@ def extract_skills(text, skills_list):
 
 def extract_name(text):
     """
-    Tries to find a person's name using spaCy NER.
-    Fallback: Returns the first line of the text if no name found.
+    Extracts name using a 'First Line' strategy (most reliable) 
+    with a fallback to spaCy AI.
     """
+    # 1. Clean the text and split into lines
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    # 2. Strategy: The First Line Rule
+    # If the first line is short (e.g., 2-4 words), assume it's the name.
+    if lines:
+        first_line = lines[0]
+        # Check if it looks like a name (not too long, mostly letters)
+        if len(first_line.split()) <= 4:
+            return first_line.title()  # Convert "JOHN DOE" to "John Doe"
+
+    # 3. Fallback Strategy: spaCy AI
+    # If the first line failed, ask the AI to find a PERSON entity
     doc = nlp(text)
     for ent in doc.ents:
         if ent.label_ == "PERSON":
             return ent.text
+            
     return "Unknown"
