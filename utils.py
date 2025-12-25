@@ -50,25 +50,36 @@ def extract_skills(text, skills_list):
 
 def extract_name(text):
     """
-    Extracts name using a 'First Line' strategy (most reliable) 
-    with a fallback to spaCy AI.
+    Extracts name with multiple strategies:
+    1. First Line (if isolated).
+    2. First 2 words of First Line (if merged and uppercase).
+    3. SpaCy NER (as fallback, with filters).
     """
-    # 1. Clean the text and split into lines
+    # Clean text and split into lines
     lines = [line.strip() for line in text.split('\n') if line.strip()]
     
-    # 2. Strategy: The First Line Rule
-    # If the first line is short (e.g., 2-4 words), assume it's the name.
     if lines:
         first_line = lines[0]
-        # Check if it looks like a name (not too long, mostly letters)
-        if len(first_line.split()) <= 4:
-            return first_line.title()  # Convert "JOHN DOE" to "John Doe"
+        words = first_line.split()
+        
+        # Strategy 1: Isolated Name (e.g., "John Doe")
+        # If the first line is 2-3 words and mostly letters
+        if 2 <= len(words) <= 3 and all(w.isalpha() for w in words):
+            return first_line.title()
+            
+        # Strategy 2: Merged Line (e.g., "JOHN DOE Software Engineer")
+        # If the first 2 words are ALL CAPS, they are likely the name.
+        if len(words) > 3 and words[0].isupper() and words[1].isupper():
+            return f"{words[0]} {words[1]}".title()
 
-    # 3. Fallback Strategy: spaCy AI
-    # If the first line failed, ask the AI to find a PERSON entity
+    # Strategy 3: SpaCy Fallback (AI)
     doc = nlp(text)
     for ent in doc.ents:
         if ent.label_ == "PERSON":
+            # FILTER: Ignore common mistakes (Job Titles)
+            lower_text = ent.text.lower()
+            if "enthusiast" in lower_text or "engineer" in lower_text or "developer" in lower_text:
+                continue
             return ent.text
             
     return "Unknown"
